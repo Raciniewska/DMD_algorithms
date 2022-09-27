@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np #1
 import scipy.integrate
 from matplotlib import pyplot as plt
 from pydmd import DMD
