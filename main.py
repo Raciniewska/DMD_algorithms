@@ -39,7 +39,7 @@ dmd.fit(snapshots)
 dmd.plot_modes_2D(figsize=(12,5))
 
 #Randomizowany DMD na szeregu czasowym
-rdmd = rDMDClass(svd_rank=1, tlsq_rank=0, exact=True, opt=True)
+rdmd = rDMDClass(svd_rank=1, tlsq_rank=0, exact=True, opt=False)
 rdmd.fit(snapshots, oversample = 12,n_subspace=2, random_state =None)
 rdmd.plot_modes_2D(figsize=(12,5))
 

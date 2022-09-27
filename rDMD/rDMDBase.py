@@ -392,10 +392,12 @@ class rDMDBase(object):
         Jovanovic et al. 2014, Sparsity-promoting dynamic mode decomposition,
         https://hal-polytechnique.archives-ouvertes.fr/hal-00995141/document
         """
+        print(self.opt)
         if isinstance(self.opt, bool) and self.opt:
             # b optimal
             a = np.linalg.solve(*self._optimal_dmd_matrixes())
         else:
+            print("Zuuuu")
             if isinstance(self.opt, bool):
                 amplitudes_snapshot_index = 0
             else:
