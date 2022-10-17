@@ -7,13 +7,15 @@ from Utils import _col_major_2darray, plot_mode_2D
 import time as tm
 
 #Generowanie szeregów czasowych + nakładanie szumu
-x1 = np.linspace(-3, 3, 80)
-x2 = np.linspace(-3, 3, 80)
+x1 = np.linspace(-3, 3, 100)
+x2 = np.linspace(-3, 3, 100)
 x1grid, x2grid = np.meshgrid(x1, x2)
 time = np.linspace(0, 6, 16)
 data = [2/np.cosh(x1grid)/np.cosh(x2grid)*(1.2j**-t) for t in time]
-noise = [np.random.normal(0.0, 0.4, size=x1grid.shape) for t in time]
-snapshots = [d+n for d,n in zip(data, noise)]
+print(np.array(data).min())
+print(np.array(data).max())
+noise = [np.random.normal(0.0, 0.45, size=x1grid.shape) for t in time]
+snapshots =[d+n for d,n in zip(data, noise)]
 
 #Wizualizacja wejściowych szeregów czasowych
 fig = plt.figure(figsize=(18,12))
