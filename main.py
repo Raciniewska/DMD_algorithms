@@ -3,7 +3,7 @@ import scipy.integrate
 from matplotlib import pyplot as plt
 from pydmd import DMD
 from rDMD.rDMDClass import rDMDClass
-from Utils import _col_major_2darray, plot_mode_2D
+from Utils import _col_major_2darray, plot_mode_2D, calculate_psnr
 import time as tm
 
 #Generowanie szeregów czasowych + nakładanie szumu
@@ -14,16 +14,15 @@ time = np.linspace(0, 6, 16)
 data = [2/np.cosh(x1grid)/np.cosh(x2grid)*(1.2j**-t) for t in time]
 print(np.array(data).min())
 print(np.array(data).max())
-noise = [np.random.normal(0.0, 0.45, size=x1grid.shape) for t in time]
+noise = [np.random.normal(0.0, 0.40, size=x1grid.shape) for t in time]
 snapshots =[d+n for d,n in zip(data, noise)]
-
 #Wizualizacja wejściowych szeregów czasowych
 fig = plt.figure(figsize=(18,12))
-plt.rc('font', size=20)
+#plt.rc('font', size=20)
 for id_subplot, snapshot in enumerate(snapshots, start=1):
     sub = plt.subplot(4, 4, id_subplot)
     sub.set(title="Migawka nr." + str(id_subplot))
-    plt.pcolor(x1grid, x2grid, snapshot.real, vmin=-1, vmax=1)
+    plt.pcolor(x1grid, x2grid, snapshot.real+snapshot.imag, vmin=-1, vmax=1)
 plt.subplots_adjust(wspace=0.5, hspace=0.5)
 plt.suptitle("Wygenerowane migawki czasowe",fontsize=40)
 plt.show()
@@ -31,7 +30,7 @@ plt.show()
 # in some cases (as this tutorial) the singular values should be examinated in order to select the proper truncation.
 fig = plt.figure(figsize=(18,12))
 plt.plot(scipy.linalg.svdvals(np.array([snapshot.flatten() for snapshot in snapshots]).T), 'o')
-plt.title("Wartości własne 'spłaszczonej' macierzy wejściowej",fontsize=40)
+#plt.title("Wartości własne 'spłaszczonej' macierzy wejściowej",fontsize=40)
 #plt.title("Singular values of flatten input snapshots",fontsize=40)
 plt.show()
 
@@ -165,14 +164,14 @@ compute_integral = scipy.integrate.trapz
 dmd_states = [state.reshape(x1grid.shape) for state in dmd.reconstructed_data.T]
 original_int = [compute_integral(compute_integral(snapshot)).real for snapshot in snapshots]
 dmd_int = [compute_integral(compute_integral(state)).real for state in dmd_states]
-figure = plt.figure(figsize=(18, 5))
-plt.plot(dmd.original_timesteps, original_int, 'bo', label='oryginalne migawki czasowe')
-plt.plot(dmd.dmd_timesteps, dmd_int, 'r.', label='wektory własne')
-plt.ylabel('Całka')
-plt.xlabel('Czes')
-plt.grid()
-leg = plt.legend()
-plt.show()
+# figure = plt.figure(figsize=(18, 5))
+# plt.plot(dmd.original_timesteps, original_int, 'bo', label='oryginalne migawki czasowe')
+# plt.plot(dmd.dmd_timesteps, dmd_int, 'r.', label='wektory własne')
+# plt.ylabel('Całka')
+# plt.xlabel('Czes')
+# plt.grid()
+# leg = plt.legend()
+# plt.show()
 
 #Bład rekonstrukcji randomizowany DMD
 print("Shape before manipulation: {}".format(rdmd.reconstructed_data.shape))
@@ -192,48 +191,86 @@ plt.show()
 compute_integral = scipy.integrate.trapz
 rdmd_states = [state.reshape(x1grid.shape) for state in rdmd.reconstructed_data.T]
 original_int = [compute_integral(compute_integral(snapshot)).real for snapshot in snapshots]
+originalWithoutNoice_int = [compute_integral(compute_integral(snapshot)).real for snapshot in data]
 rdmd_int = [compute_integral(compute_integral(state)).real for state in rdmd_states]
 figure = plt.figure(figsize=(18, 5))
-plt.plot(rdmd.original_timesteps, original_int, 'bo', label='oryginalne migawki czasowe')
-plt.plot(rdmd.dmd_timesteps, rdmd_int, 'r.', label='wektory własne')
+plt.plot(rdmd.original_timesteps, original_int, 'b+', label='migawki czasowe z nałożonym szumem')
+plt.plot(rdmd.original_timesteps, originalWithoutNoice_int, 'gx', label='migawki czasowe z bez nałożonego szumu')
+plt.plot(rdmd.dmd_timesteps, rdmd_int, 'r.', label='wektory własne uzyskane przez rDMD')
+plt.plot(dmd.dmd_timesteps, dmd_int, 'k.', label='wektory własne uzyskane przez DMD')
 plt.ylabel('Całka')
-plt.xlabel('Czes')
+plt.xlabel('Czas')
 plt.grid()
 leg = plt.legend()
 plt.show()
 
-#Predykcja przyszłości przez deterministyczny DMD
-fig = plt.figure(figsize=(18,12))
+#plot and calculate PSNR
 flatten_A, flatten_A_shape= _col_major_2darray(snapshots)
-prev_frame = flatten_A[:,15]
-predictions = []
-for i in range(0,15):
-    next_frame = dmd.predict(prev_frame)
-    predictions.append(next_frame)
-    prev_frame = next_frame
-predictions =np.concatenate((flatten_A.T,np.array(predictions)))
-for id_subplot, snapshot in enumerate(predictions, start=1):
-     sub=plt.subplot(7, 7, id_subplot)
-     plt.pcolor(x1grid, x2grid, snapshot.reshape(x1grid.shape).real, vmin=-1, vmax=1)
-     sub.set(title="Migawka nr." + str(id_subplot))
-plt.suptitle("Przewidywane migawki czasowe przez deterministyczny algorytm DMD", fontsize=30)
-plt.subplots_adjust(wspace=0.5, hspace=0.5)
+prev_frameDMD = flatten_A[:,15]
+prev_frameRDMD = flatten_A[:,15]
+predictionsRDMD = []
+predictionsDMD = []
+for i in range(0,16):
+     next_frameRDMD = rdmd.predict(prev_frameRDMD)
+     predictionsRDMD.append(next_frameRDMD)
+     prev_frameRDMD = next_frameRDMD
+     next_frameDMD = dmd.predict(prev_frameDMD)
+     predictionsDMD.append(next_frameDMD)
+     prev_frameDMD = next_frameDMD
+predictionsRDMD =np.array(predictionsRDMD)
+predictionsDMD =np.array(predictionsDMD)
+# data without noice
+x1 = np.linspace(-3, 3, 100)
+x2 = np.linspace(-3, 3, 100)
+x1grid, x2grid = np.meshgrid(x1, x2)
+time = np.linspace(6, 12, 16)
+data = [2/np.cosh(x1grid)/np.cosh(x2grid)*(1.2j**-t) for t in time]
+print(time)
+PSNR_metric_RDMD = []
+PSNR_metric_DMD = []
+PSNR_metric =[]
+for id_subplot, snapshot in enumerate(predictionsDMD, start=1):
+    PSNR_metric.append(calculate_psnr(data[id_subplot-1].real,data[id_subplot-1].real))
+    PSNR_metric_DMD.append(calculate_psnr(data[id_subplot-1].real,snapshot.reshape(x1grid.shape).real))
+for id_subplot, snapshot in enumerate(predictionsRDMD, start=1):
+    PSNR_metric_RDMD.append(calculate_psnr(data[id_subplot-1].real,snapshot.reshape(x1grid.shape).real))
+plt.plot(np.linspace(7, 24, 16),PSNR_metric_RDMD,'r', label='rDMD')
+plt.plot(np.linspace(7, 24, 16),PSNR_metric_DMD,'k', label='DMD')
+leg = plt.legend()
 plt.show()
 
-#Predykcja przyszłości przez niedeterministyczny DMD
-plt.figure(2,figsize=(18,12))
-prev_frame = flatten_A[:,15]
-predictions = []
-for i in range(0,15):
-    next_frame = rdmd.predict(prev_frame)
-    predictions.append(next_frame)
-    prev_frame = next_frame
-predictions =np.concatenate((flatten_A.T,np.array(predictions)))
-for id_subplot, snapshot in enumerate(predictions, start=1):
-     sub=plt.subplot(7, 7, id_subplot)
-     plt.pcolor(x1grid, x2grid, snapshot.reshape(x1grid.shape).real, vmin=-1, vmax=1)
-     sub.set(title="Migawka nr." + str(id_subplot))
-plt.suptitle("Przewidywane migawki czasowe przez randomizowany algorytm DMD", fontsize=30)
-plt.subplots_adjust(wspace=0.5, hspace=0.5)
-plt.show()
-print("finito")
+# #Predykcja przyszłości przez deterministyczny DMD
+# fig = plt.figure(figsize=(18,12))
+# flatten_A, flatten_A_shape= _col_major_2darray(snapshots)
+# prev_frame = flatten_A[:,15]
+# predictions = []
+# for i in range(0,15):
+#     next_frame = dmd.predict(prev_frame)
+#     predictions.append(next_frame)
+#     prev_frame = next_frame
+# predictions =np.concatenate((flatten_A.T,np.array(predictions)))
+# for id_subplot, snapshot in enumerate(predictions, start=1):
+#      sub=plt.subplot(7, 7, id_subplot)
+#      plt.pcolor(x1grid, x2grid, snapshot.reshape(x1grid.shape).real, vmin=-1, vmax=1)
+#      sub.set(title="Migawka nr." + str(id_subplot))
+# plt.suptitle("Przewidywane migawki czasowe przez deterministyczny algorytm DMD", fontsize=30)
+# plt.subplots_adjust(wspace=0.5, hspace=0.5)
+# plt.show()
+#
+# #Predykcja przyszłości przez niedeterministyczny DMD
+# plt.figure(2,figsize=(18,12))
+# prev_frame = flatten_A[:,15]
+# predictions = []
+# for i in range(0,15):
+#     next_frame = rdmd.predict(prev_frame)
+#     predictions.append(next_frame)
+#     prev_frame = next_frame
+# predictions =np.concatenate((flatten_A.T,np.array(predictions)))
+# for id_subplot, snapshot in enumerate(predictions, start=1):
+#      sub=plt.subplot(7, 7, id_subplot)
+#      plt.pcolor(x1grid, x2grid, snapshot.reshape(x1grid.shape).real, vmin=-1, vmax=1)
+#      sub.set(title="Migawka nr." + str(id_subplot))
+# plt.suptitle("Przewidywane migawki czasowe przez randomizowany algorytm DMD", fontsize=30)
+# plt.subplots_adjust(wspace=0.5, hspace=0.5)
+# plt.show()
+# print("finito")
