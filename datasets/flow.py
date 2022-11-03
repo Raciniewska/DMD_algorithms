@@ -1,9 +1,11 @@
 from pydmd import DMD
 from rDMD.rDMDClass import rDMDClass
-from Utils import _col_major_2darray, plot_mode_2D_flow
+from Utils import _col_major_2darray, plot_mode_2D_flow, calculate_psnr
 import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
+import scipy.integrate
+import time
 
 nx = 449
 ny = 199
@@ -48,13 +50,59 @@ def plotAverageDMDmode(modes, scales):
     plot_mode_2D_flow(x=np.arange(nx), y=np.arange(ny),
                       figsize=(20, 5), modes=avgMode, index_mode=None, scales = scales)
 
-def plotEigs(eigs):
-    plt.plot(np.real(eigs), np.imag(eigs), '.', markersize=13)
+def plotEigs(eigs1, eigs2):
+    plt.plot(np.real(eigs1), np.imag(eigs1), 'rx', markersize=13)
+    plt.plot(np.real(eigs2), np.imag(eigs2), 'g.', markersize=13)
     plt.xlabel("część rzeczywista")
     plt.ylabel("część urojona")
     theta = np.linspace(0, 2 * np.pi, 1024)
     plt.plot(np.cos(theta), np.sin(theta), "k--")
     plt.show()
+
+def plotIntegral():
+    compute_integral = scipy.integrate.trapz
+    dmd_states = [state.reshape((ny,nx)) for state in dmd.reconstructed_data.T]
+    dmd_int = [compute_integral(compute_integral(state)).real for state in dmd_states]
+    rdmd_states = [state.reshape((ny,nx)) for state in rdmd.reconstructed_data.T]
+    original_int = [compute_integral(compute_integral(snapshot)).real for snapshot in (reshaping(x) for x in X.T)]
+    rdmd_int = [compute_integral(compute_integral(state)).real for state in rdmd_states]
+    figure = plt.figure(figsize=(18, 5))
+    plt.plot(rdmd.original_timesteps, original_int, 'g.', label='migawki czasowe macierzy danych')
+    plt.plot(rdmd.dmd_timesteps, rdmd_int, 'r+', label='wektory własne uzyskane przez rDMD')
+    plt.plot(dmd.dmd_timesteps, dmd_int, 'b+', label='wektory własne uzyskane przez DMD')
+    plt.ylabel('Całka')
+    plt.xlabel('Czas')
+    plt.grid()
+    leg = plt.legend()
+    plt.show()
+
+def plotPSNR():
+    # plot and calculate PSNR
+    data = [x for x in (reshaping(snap) for snap in X.T)]
+    PSNR_metric_RDMD = []
+    PSNR_metric_DMD = []
+    for id_subplot, snapshot in enumerate(dmd.reconstructed_data.T, start=1):
+        PSNR_metric_DMD.append(calculate_psnr(data[id_subplot - 1].real, snapshot.reshape((ny,nx)).real))
+    for id_subplot, snapshot in enumerate(rdmd.reconstructed_data.T, start=1):
+        PSNR_metric_RDMD.append(calculate_psnr(data[id_subplot - 1].real, snapshot.reshape((ny,nx)).real))
+    plt.plot(np.linspace(1, 151, 151), np.subtract(PSNR_metric_DMD,PSNR_metric_RDMD), 'r')
+    leg = plt.legend()
+    plt.show()
+
+def showAverageExecutionTime(repetitions):
+    dmd_time, rdmd_time = 0, 0
+    for i in range(repetitions):
+        start = time.time()
+        dmd.fit(X)
+        end = time.time()
+        dmd_time += (end - start)
+    for i in range(repetitions):
+        start = time.time()
+        rdmd.fit(X, oversample=12, n_subspace=2, random_state=None)
+        end = time.time()
+        rdmd_time += (end - start)
+    print("Sredni czas wykonania dmd: " + str(dmd_time / repetitions) + " sekund")
+    print("Sredni czas wykonania rdmd: " + str(rdmd_time / repetitions) + " sekund")
 
 X = np.genfromtxt('../../data/vorticity.csv', delimiter=',', dtype=None)
 print(len(X))
@@ -80,5 +128,15 @@ rdmd.fit(X, oversample = 12,n_subspace=2, random_state =None)
 #plotAverageDMDmode(rdmd.modes,scales)
 
 #plot eigs
-plotEigs(dmd.eigs)
+#plotEigs(dmd.eigs)
+#plotEigs(dmd.eigs,rdmd.eigs)
 
+#reconstructed data integral
+#plotIntegral()
+
+#reconstructed data MSE by PSNR
+#plotPSNR()
+
+#compare time spent on task
+repetitions =5
+showAverageExecutionTime(repetitions)
