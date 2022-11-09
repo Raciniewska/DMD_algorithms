@@ -27,9 +27,9 @@ def firstTest():
     mins = []
     errs = []
 
-    ls = range(1, 151, 5)
+    ls = range(1, 201, 5)
     for l in ls:
-        _, _, _, Q = rsvd(A, l, n_oversamples=0, return_range=True, samplingMatrixType="Uniform")
+        _, _, _, Q = rsvd(A, l, n_oversamples=0, return_range=True, samplingMatrixType="SRFT")
         err = np.linalg.norm((np.eye(m) - Q @ Q.T) @ A, 2)
         errs.append(np.log10(err))
 

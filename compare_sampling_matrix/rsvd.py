@@ -2,6 +2,7 @@ import numpy as np
 import math
 import cmath
 import random
+from matplotlib import pyplot as plt
 # ------------------------------------------------------------------------------
 
 def rsvd(A, rank, n_oversamples=None, n_subspace_iters=None,
@@ -24,9 +25,15 @@ def rsvd(A, rank, n_oversamples=None, n_subspace_iters=None,
     Q = find_range(A, n_samples, n_subspace_iters, samplingMatrixType)
 
     # Stage B.
-    B = Q.T @ A
+    if samplingMatrixType == "CCS":
+        B=Q.T
+    else:
+        B = Q.T @ A
     U_tilde, S, Vt = np.linalg.svd(B)
-    U = Q @ U_tilde
+    if samplingMatrixType == "CCS":
+        U =  U_tilde
+    else:
+        U = Q @ U_tilde
 
     # Truncate.
     U, S, Vt = U[:, :rank], S[:rank], Vt[:rank, :]
@@ -37,43 +44,22 @@ def rsvd(A, rank, n_oversamples=None, n_subspace_iters=None,
     return U, S, Vt
 
 # ------------------------------------------------------------------------------
-def createDFTMatrix(n):
-    DFT = [[]*n]
-    for p in range(n):
-        for q in range(n):
-            radius = pow(n, -0.5)
-            angle = (p-1)*(q-1)/n
-            val =  radius * cmath.exp(-math.pi*2j*angle)
-            DFT[p].append(val)
-    return DFT
+
 
 def columnSamplingMatrix(n,numberOfcolumns):
-    identityMatrix = np.identity(n)
+    identityMatrix = np.identity(n, complex)
     idx = np.random.choice(n,numberOfcolumns,replace=False)
     ret = identityMatrix[:,idx]
+   # plt.imshow(ret, interpolation='nearest')
+   # plt.show()
     return ret
 
-def randPointOnUnitCircle():
-    # radius of the circle
-    circle_r = 1
-    # center of the circle (x, y)
-    circle_x = 0
-    circle_y = 0
 
-    # random angle
-    alpha = 2 * math.pi * random.random()
-    # random radius
-    r = circle_r * math.sqrt(random.random())
-    # calculating coordinates
-    x = r * math.cos(alpha) + circle_x
-    y = r * math.sin(alpha) + circle_y
-    return complex(x,y)
-
-def genereteComplexUnitCircleMatrix(n):
-    diag =  np.identity(n)
-    for i in range(n):
-        n[i][i] = randPointOnUnitCircle()
-    return diag
+def CCSSampling(A, n, n_samples):
+    #choose columns
+    column_indexes = list(range(n))
+    columns = sorted(random.sample(column_indexes, n_samples))
+    return A[:,columns]
 
 def find_range(A, n_samples, n_subspace_iters=None, samplingMatrixType = None):
     """Algorithm 4.1: Randomized range finder (p. 240 of Halko et al).
@@ -92,13 +78,13 @@ def find_range(A, n_samples, n_subspace_iters=None, samplingMatrixType = None):
         O = np.random.uniform(size = (n, n_samples))
     elif samplingMatrixType == "SRFT":
         #https: // arxiv.org / pdf / 0909.4061.pdf
-        D = genereteComplexUnitCircleMatrix(n)
-        F=createDFTMatrix(n)
+        DFT = np.fft.fft(A)
         R=columnSamplingMatrix(n,n_samples)
-        O = math.sqrt((n/n_samples)) * D*F*R
-
+        O= DFT.real @ R
+    if samplingMatrixType == "CCS":
+        Y = np.asarray(CCSSampling(A, n, n_samples))
+        return Y
     Y = A @ O
-
     if n_subspace_iters:
         return subspace_iter(A, Y, n_subspace_iters)
     else:
