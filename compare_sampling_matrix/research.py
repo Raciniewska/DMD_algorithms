@@ -20,8 +20,8 @@ def gen_linear_decaying_spectrum_matrix(m, n, k):
 def firstTest():
     fig, ax = plt.subplots(1, 1)
     fig.set_size_inches(15, 5)
-    m = 200
-    n = 200
+    m = 256
+    n = 256
     A = generate_decaying_matrix(m, n)
 
     mins = []

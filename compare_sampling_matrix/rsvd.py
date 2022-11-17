@@ -2,6 +2,7 @@ import numpy as np
 import math
 import cmath
 import random
+from scipy.linalg import hadamard
 from matplotlib import pyplot as plt
 # ------------------------------------------------------------------------------
 
@@ -25,15 +26,9 @@ def rsvd(A, rank, n_oversamples=None, n_subspace_iters=None,
     Q = find_range(A, n_samples, n_subspace_iters, samplingMatrixType)
 
     # Stage B.
-    if samplingMatrixType == "CCS":
-        B=Q.T
-    else:
-        B = Q.T @ A
+    B = Q.T @ A
     U_tilde, S, Vt = np.linalg.svd(B)
-    if samplingMatrixType == "CCS":
-        U =  U_tilde
-    else:
-        U = Q @ U_tilde
+    U = Q @ U_tilde
 
     # Truncate.
     U, S, Vt = U[:, :rank], S[:rank], Vt[:rank, :]
@@ -55,12 +50,6 @@ def columnSamplingMatrix(n,numberOfcolumns):
     return ret
 
 
-def CCSSampling(A, n, n_samples):
-    #choose columns
-    column_indexes = list(range(n))
-    columns = sorted(random.sample(column_indexes, n_samples))
-    return A[:,columns]
-
 def find_range(A, n_samples, n_subspace_iters=None, samplingMatrixType = None):
     """Algorithm 4.1: Randomized range finder (p. 240 of Halko et al).
     Given a matrix A and a number of samples, computes an orthonormal matrix
@@ -81,9 +70,15 @@ def find_range(A, n_samples, n_subspace_iters=None, samplingMatrixType = None):
         DFT = np.fft.fft(A)
         R=columnSamplingMatrix(n,n_samples)
         O= DFT.real @ R
-    if samplingMatrixType == "CCS":
-        Y = np.asarray(CCSSampling(A, n, n_samples))
-        return Y
+    elif samplingMatrixType == "SRHT":
+        #https://arxiv.org/pdf/2210.11295.pdf
+        R = np.random.uniform(size=( n_samples,n))
+        H = hadamard(n)
+        D = columnSamplingMatrix(n,n)
+        O = R @ H @ D
+        O = math.sqrt(n/n_samples)*O
+        O = O.T
+
     Y = A @ O
     if n_subspace_iters:
         return subspace_iter(A, Y, n_subspace_iters)
