@@ -78,7 +78,6 @@ def find_range(A, n_samples, n_subspace_iters=None, samplingMatrixType = None):
         O = R @ H @ D
         O = math.sqrt(n/n_samples)*O
         O = O.T
-
     Y = A @ O
     if n_subspace_iters:
         return subspace_iter(A, Y, n_subspace_iters)

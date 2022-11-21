@@ -2,6 +2,8 @@ from rsvd import rsvd
 import numpy as np
 import matplotlib.pyplot as plt
 from   matplotlib import rc
+from sklearn.preprocessing import normalize
+from PIL import Image
 
 def generate_decaying_matrix(m, n):
     U = np.eye(m)
@@ -20,16 +22,19 @@ def gen_linear_decaying_spectrum_matrix(m, n, k):
 def firstTest():
     fig, ax = plt.subplots(1, 1)
     fig.set_size_inches(15, 5)
-    m = 256
-    n = 256
-    A = generate_decaying_matrix(m, n)
-
+    m = 512#256
+    n = 512 #256
+    A = np.asarray(Image.open('../data/pattern.jpg').convert('L'))
+    #A = generate_decaying_matrix(m, n)
+    #plt.imshow(A, interpolation='nearest')
+    #plt.show()
+    print(A)
     mins = []
     errs = []
 
-    ls = range(1, 201, 5)
+    ls = range(1, 511, 10)
     for l in ls:
-        _, _, _, Q = rsvd(A, l, n_oversamples=0, return_range=True, samplingMatrixType="SRFT")
+        _, _, _, Q = rsvd(A, l, n_oversamples=0, return_range=True, n_subspace_iters=2,samplingMatrixType="SRFT")
         err = np.linalg.norm((np.eye(m) - Q @ Q.T) @ A, 2)
         errs.append(np.log10(err))
 
