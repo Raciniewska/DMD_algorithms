@@ -49,6 +49,10 @@ def columnSamplingMatrix(n,numberOfcolumns):
    # plt.show()
     return ret
 
+def randDiagonalComplexMatrix(n):
+    v =  np.random.random(n) + np.random.random(n) * 1j
+    D = np.diag(v)
+    return D
 
 def find_range(A, n_samples, n_subspace_iters=None, samplingMatrixType = None):
     """Algorithm 4.1: Randomized range finder (p. 240 of Halko et al).
@@ -65,18 +69,21 @@ def find_range(A, n_samples, n_subspace_iters=None, samplingMatrixType = None):
         O = np.random.randn(n, n_samples)
     elif samplingMatrixType == "Uniform":
         O = np.random.uniform(size = (n, n_samples))
+    elif samplingMatrixType == "Gauss":
+        O = np.random.normal(size=(n, n_samples))
     elif samplingMatrixType == "SRFT":
         #https: // arxiv.org / pdf / 0909.4061.pdf
         DFT = np.fft.fft(A)
         R=columnSamplingMatrix(n,n_samples)
-        O= DFT.real @ R
+        O= math.sqrt(n /  n_samples) * DFT.real @ R
+        #O= math.sqrt(n / n_samples)* O
     elif samplingMatrixType == "SRHT":
         #https://arxiv.org/pdf/2210.11295.pdf
-        R = np.random.uniform(size=( n_samples,n))
+        R = np.random.uniform(size=(n_samples, n))
         H = hadamard(n)
-        D = columnSamplingMatrix(n,n)
+        D = columnSamplingMatrix(n, n)
         O = R @ H @ D
-        O = math.sqrt(n/n_samples)*O
+        O = math.sqrt(n / n_samples) * O
         O = O.T
     Y = A @ O
     if n_subspace_iters:
