@@ -6,6 +6,7 @@ from sklearn.preprocessing import normalize
 from PIL import Image
 import time
 import csv
+from statistics import variance
 
 
 def generate_decaying_matrix(m, n):
@@ -45,15 +46,15 @@ def getTimeData():
                 time_spent.append(end -start)
             result_dict[name].append(np.mean(time_spent))
             print(name+" : l="+str(l))
-        # name = "Deterministic"
-        # time_spent =[]
-        # for i in range(5):
-        #     start = time.time()
-        #     S = np.linalg.svd(A, compute_uv=False)
-        #     end = time.time()
-        #     time_spent.append(end - start)
-        # print(np.mean(time_spent))
-        # print(name+" : l="+str(l))
+        name = "Deterministic"
+        time_spent =[]
+        for i in range(5):
+            start = time.time()
+            S = np.linalg.svd(A, compute_uv=False)
+            end = time.time()
+            time_spent.append(end - start)
+        print(np.mean(time_spent))
+        print(name+" : l="+str(l))
     with open("resultsTime.csv", "w") as outfile:
         writer = csv.writer(outfile)
         key_list = list(result_dict.keys())
@@ -98,6 +99,44 @@ def getErrorData():
         result_dict[name].append(np.log10(min_))
         print(name + " : l=" + str(l))
     with open("resultsError.csv", "w") as outfile:
+        writer = csv.writer(outfile)
+        key_list = list(result_dict.keys())
+        limit = len(result_dict[key_list[0]])
+        writer.writerow(result_dict.keys())
+        for i in range(limit):
+            row =[]
+            for key in key_list:
+                row.append(result_dict[key][i])
+            writer.writerow(row)
+
+def getErrorDataWithVariance():
+    fig, ax = plt.subplots(1, 1)
+    fig.set_size_inches(15, 5)
+    m = 2048#512#256
+    n =2048#512 #256
+    A = np.asarray(Image.open('../data/flowers.jpg').convert('L'))
+    print(A)
+    mins = []
+
+    ls = [10,20,40,60,80,100,200,300,400,500]
+    result_dict = {
+        "Uniform": [],
+        "Gauss": [],
+        "SRFT": [],
+        "SRHT": []
+    }
+    S = np.linalg.svd(A, compute_uv=False)
+    for l in ls:
+        names = ["Uniform", "Gauss", "SRFT", "SRHT"]
+        for name in names:
+            errs = []
+            for i in range(5):
+                _, _, _, Q = rsvd(A, l, n_oversamples=0, return_range=True, n_subspace_iters=2, samplingMatrixType=name)
+                err = np.linalg.norm((np.eye(m) - Q @ Q.T) @ A, 2)
+                errs.append(np.log10(err))
+            result_dict[name].append(variance(errs))
+            print(name + " : l=" + str(l))
+    with open("resultsErrorVar.csv", "w") as outfile:
         writer = csv.writer(outfile)
         key_list = list(result_dict.keys())
         limit = len(result_dict[key_list[0]])
@@ -173,4 +212,4 @@ def showPowerIterations():
     plt.tight_layout()
     plt.show()
 
-getErrorData()
+getErrorDataWithVariance()
