@@ -6,6 +6,8 @@ from PIL import Image
 from matplotlib import pyplot as plt
 import scipy.integrate
 import time
+import matplotlib.ticker as mtick
+from datetime import datetime
 
 nx = 449
 ny = 199
@@ -29,15 +31,26 @@ def plotSnapshot(x):
 def plotSVD(snapshots):
     fig = plt.figure(figsize=(18, 12))
     u, s, v = np.linalg.svd(snapshots.T, full_matrices=False)
-    #plt.rcParams['font.size'] = '30'
+    plt.rcParams['font.size'] = '30'
+    plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
+    plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
+    plt.minorticks_on()
     plt.yscale('log')
     plt.plot(s, 'o')
+    plt.ylabel("\u03C3"+"_k")
+    plt.xlabel("k")
     plt.show()
 
     var_explained = np.round(s ** 2 / np.sum(s ** 2), decimals=3)
     print(sum(var_explained[:10]))
     plt.bar(x=list(range(1, len(var_explained[:40]) + 1)),
                 height=var_explained[:40], color="limegreen")
+    plt.xlabel("Numer wartości własnej")
+    plt.ylabel("Procent wyjaśnialności zbioru")
+    plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
+    plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
+    plt.minorticks_on()
+    plt.gca().yaxis.set_major_formatter(mtick.PercentFormatter(1))
     plt.show()
 
 def plotDMDMode(m):
@@ -48,15 +61,21 @@ def plotDMDMode(m):
 def plotAverageDMDmode(modes, scales):
     avgMode = np.array([np.mean(modes,axis =1 )]).T
     plot_mode_2D_flow(x=np.arange(nx), y=np.arange(ny),
-                      figsize=(20, 5), modes=avgMode, index_mode=None, scales = scales)
+                      figsize=(25, 10), modes=avgMode, index_mode=None, scales = scales)
 
 def plotEigs(eigs1, eigs2):
-    plt.plot(np.real(eigs1), np.imag(eigs1), 'rx', markersize=13)
-    plt.plot(np.real(eigs2), np.imag(eigs2), 'g.', markersize=13)
+    plt.rcParams['font.size'] = '13'
+    plt.plot(np.real(eigs1), np.imag(eigs1), 'rx', markersize=13, label="DMD")
+    plt.plot(np.real(eigs2), np.imag(eigs2), 'g.', markersize=13, label ="rDMD")
     plt.xlabel("część rzeczywista")
     plt.ylabel("część urojona")
     theta = np.linspace(0, 2 * np.pi, 1024)
     plt.plot(np.cos(theta), np.sin(theta), "k--")
+    plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
+    plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
+    plt.minorticks_on()
+    plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
+    plt.tight_layout()
     plt.show()
 
 def plotIntegral():
@@ -104,6 +123,46 @@ def showAverageExecutionTime(repetitions):
     print("Sredni czas wykonania dmd: " + str(dmd_time / repetitions) + " sekund")
     print("Sredni czas wykonania rdmd: " + str(rdmd_time / repetitions) + " sekund")
 
+def get_error(oryg, approx):
+    licznik = np.linalg.norm(oryg-approx, 2)
+    mianownik  =  np.linalg.norm(oryg, 2)
+    return licznik/mianownik
+
+def get_data_for_dmd():
+    target_rank = [10, 20, 30, 40]
+    q = [0, 1, 2, 3]
+    p = [0, 2, 5, 8, 10]
+
+    for r in target_rank:
+        row_dmd = [target_rank]
+        time_spent_row = []
+        for i in range(3):
+            start = datetime.now()
+            dmd = DMD(svd_rank=10, tlsq_rank=0, exact=True, opt=True)
+            dmd.fit(X)
+            end = datetime.now()
+            time_spent = end - start
+            time_spent_row.append(time_spent)
+        row_dmd = row_dmd+time_spent_row
+
+        for p_val in p:
+            for q_val in q:
+                row_rdmd = [target_rank, p_val, q_val]
+                time_spent_row = []
+                err_spent_row = []
+                for i in range(3):
+                    rdmd = rDMDClass(svd_rank=r, tlsq_rank=0, exact=True, opt=False)
+                    start = datetime.now()
+                    rdmd.fit(X, oversample=p_val, n_subspace=q_val, random_state=None)
+                    end = datetime.now()
+                    time_spent = end - start
+                    time_spent_row.append(time_spent)
+                    err = get_error(rdmd.reconstructed_data, dmd.reconstructed_data)
+                    err_spent_row.append(err)
+                row_rdmd = row_rdmd +time_spent_row + err_spent_row
+
+
+
 X = np.genfromtxt('../../data/vorticity.csv', delimiter=',', dtype=None)
 print(len(X))
 print(len(X[0]))
@@ -113,19 +172,23 @@ print(len(X[0]))
 #wyliczenie DMD modes czyli POD
 dmd = DMD(svd_rank=10, tlsq_rank=0, exact=True, opt=True)
 dmd.fit(X)
-# plotDMDMode(dmd.modes[:,1])
-#plot_mode_2D_flow(x=np.arange(nx), y=np.arange(ny),
-#                  figsize=(20,5), modes=dmd.modes,index_mode =None)
+#plotDMDMode(dmd.modes[:,1])
+#plot_mode_2D_flow(x=np.arange(nx), y=np.arange(ny), filename="dmd.jpg",
+#                  figsize=(20,8), modes=dmd.modes,index_mode =None)
+
 
 rdmd = rDMDClass(svd_rank=10, tlsq_rank=0, exact=True, opt=False)
-rdmd.fit(X, oversample = 12,n_subspace=2, random_state =None)
-#plot_mode_2D_flow(x=np.arange(nx), y=np.arange(ny),
-#                  figsize=(20,5), modes=rdmd.modes,index_mode =None)
+rdmd.fit(X, oversample = 10,n_subspace=2, random_state =None)
+# plot_mode_2D_flow(x=np.arange(nx), y=np.arange(ny), filename="dmd.jpg",
+#                   figsize=(20,8), modes=rdmd.modes,index_mode =None)
+
 #print average mode for DMD and rDMD
-#scales = [[min(dmd.modes.real.min(),rdmd.modes.real.min())/10,max(dmd.modes.real.max(),rdmd.modes.real.max())/10]
-#    ,[min(dmd.modes.imag.min(),rdmd.modes.imag.min()),max(dmd.modes.imag.max(),rdmd.modes.imag.max())]]
-#plotAverageDMDmode(dmd.modes,scales)
-#plotAverageDMDmode(rdmd.modes,scales)
+# scales = [[min(dmd.modes.real.min(),rdmd.modes.real.min())/10,max(dmd.modes.real.max(),rdmd.modes.real.max())/10]
+#     ,[min(dmd.modes.imag.min(),rdmd.modes.imag.min()),max(dmd.modes.imag.max(),rdmd.modes.imag.max())]]
+# plotAverageDMDmode(dmd.modes,scales)
+# plotAverageDMDmode(rdmd.modes,scales)
+
+get_data_for_dmd()
 
 #plot eigs
 #plotEigs(dmd.eigs)
@@ -137,6 +200,6 @@ rdmd.fit(X, oversample = 12,n_subspace=2, random_state =None)
 #reconstructed data MSE by PSNR
 #plotPSNR()
 
-#compare time spent on task
-repetitions =5
-showAverageExecutionTime(repetitions)
+# #compare time spent on task
+# repetitions =5
+# showAverageExecutionTime(repetitions)

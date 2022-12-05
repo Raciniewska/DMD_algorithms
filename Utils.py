@@ -141,6 +141,7 @@ def plot_mode_2D_flow(
     """
 Plot the DMD Modes.
 """
+    plt.rcParams['font.size'] = '30'
     if modes is None:
         raise ValueError(
             "The modes have not been computed."
@@ -190,7 +191,7 @@ Plot the DMD Modes.
         imag_ax.set_title("Część urojona")
 
         # padding between elements
-        plt.tight_layout(pad=2.0)
+        plt.tight_layout()
 
         if filename:
             plt.savefig("{0}.{1}{2}".format(basename, idx, ext))
