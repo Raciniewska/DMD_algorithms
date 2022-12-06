@@ -1,13 +1,14 @@
 from pydmd import DMD
+from datetime import datetime
 from rDMD.rDMDClass import rDMDClass
-from Utils import _col_major_2darray, plot_mode_2D_flow, calculate_psnr
-import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
+from Utils import _col_major_2darray, plot_mode_2D_flow, calculate_psnr
+import numpy as np
 import scipy.integrate
 import time
 import matplotlib.ticker as mtick
-from datetime import datetime
+import csv
 
 nx = 449
 ny = 199
@@ -132,25 +133,36 @@ def get_data_for_dmd():
     target_rank = [10, 20, 30, 40]
     q = [0, 1, 2, 3]
     p = [0, 2, 5, 8, 10]
+    iterations = 10
+    dmdCSV = open('results_reconstruction/dmd.csv', 'w')
+    rdmdCSV = open('results_reconstruction/rdmd.csv', 'w')
+    dmdWriter = csv.writer(dmdCSV)
+    rdmdWriter = csv.writer(rdmdCSV)
+    time_headers = [("time_"+str(i)) for i in range(iterations)]
+    error_headers = [("error_" + str(i)) for i in range(iterations)]
+
+    dmdWriter.writerow(["target_rank"]+time_headers)
+    rdmdWriter.writerow(["target_rank", "p_val","q_val"] + time_headers+error_headers)
 
     for r in target_rank:
-        row_dmd = [target_rank]
+        row_dmd = [r]
         time_spent_row = []
-        for i in range(3):
+        for i in range(iterations):
             start = datetime.now()
-            dmd = DMD(svd_rank=10, tlsq_rank=0, exact=True, opt=True)
+            dmd = DMD(svd_rank=r, tlsq_rank=0, exact=True, opt=True)
             dmd.fit(X)
             end = datetime.now()
             time_spent = end - start
             time_spent_row.append(time_spent)
         row_dmd = row_dmd+time_spent_row
+        dmdWriter.writerow(row_dmd)
 
         for p_val in p:
             for q_val in q:
-                row_rdmd = [target_rank, p_val, q_val]
+                row_rdmd = [r, p_val, q_val]
                 time_spent_row = []
                 err_spent_row = []
-                for i in range(3):
+                for i in range(iterations):
                     rdmd = rDMDClass(svd_rank=r, tlsq_rank=0, exact=True, opt=False)
                     start = datetime.now()
                     rdmd.fit(X, oversample=p_val, n_subspace=q_val, random_state=None)
@@ -160,7 +172,10 @@ def get_data_for_dmd():
                     err = get_error(rdmd.reconstructed_data, dmd.reconstructed_data)
                     err_spent_row.append(err)
                 row_rdmd = row_rdmd +time_spent_row + err_spent_row
+                rdmdWriter.writerow(row_rdmd)
 
+    dmdCSV.close()
+    rdmdCSV.close()
 
 
 X = np.genfromtxt('../../data/vorticity.csv', delimiter=',', dtype=None)
