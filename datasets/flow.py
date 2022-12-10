@@ -177,8 +177,56 @@ def get_data_for_dmd():
     dmdCSV.close()
     rdmdCSV.close()
 
+def get_data_for_dmd_with_noice():
+    target_rank = [10, 20, 30, 40]
+    q = [0, 1, 2, 3]
+    p = [0, 2, 5, 8, 10]
+    iterations = 10
+    dmdCSV = open('results_reconstruction_noice/dmd.csv', 'w')
+    rdmdCSV = open('results_reconstruction_noice/rdmd.csv', 'w')
+    dmdWriter = csv.writer(dmdCSV)
+    rdmdWriter = csv.writer(rdmdCSV)
+    time_headers = [("time_"+str(i)) for i in range(iterations)]
+    error_headers = [("error_" + str(i)) for i in range(iterations)]
+
+    dmdWriter.writerow(["target_rank"]+time_headers)
+    rdmdWriter.writerow(["target_rank", "p_val","q_val"] + time_headers+error_headers)
+
+    for r in target_rank:
+        row_dmd = [r]
+        time_spent_row = []
+        for i in range(iterations):
+            start = datetime.now()
+            dmd = DMD(svd_rank=r, tlsq_rank=0, exact=True, opt=True)
+            dmd.fit(X)
+            end = datetime.now()
+            time_spent = end - start
+            time_spent_row.append(time_spent)
+        row_dmd = row_dmd+time_spent_row
+        dmdWriter.writerow(row_dmd)
+
+        for p_val in p:
+            for q_val in q:
+                row_rdmd = [r, p_val, q_val]
+                time_spent_row = []
+                err_spent_row = []
+                for i in range(iterations):
+                    rdmd = rDMDClass(svd_rank=r, tlsq_rank=0, exact=True, opt=False)
+                    start = datetime.now()
+                    rdmd.fit(X_noice, oversample=p_val, n_subspace=q_val, random_state=None)
+                    end = datetime.now()
+                    time_spent = end - start
+                    time_spent_row.append(time_spent)
+                    err = get_error(rdmd.reconstructed_data, dmd.reconstructed_data)
+                    err_spent_row.append(err)
+                row_rdmd = row_rdmd +time_spent_row + err_spent_row
+                rdmdWriter.writerow(row_rdmd)
+
+    dmdCSV.close()
+    rdmdCSV.close()
 
 X = np.genfromtxt('../../data/vorticity.csv', delimiter=',', dtype=None)
+X_noice = X
 print(len(X))
 print(len(X[0]))
 #plotSnapshot(X[:,150].copy())
@@ -203,7 +251,8 @@ rdmd.fit(X, oversample = 10,n_subspace=2, random_state =None)
 # plotAverageDMDmode(dmd.modes,scales)
 # plotAverageDMDmode(rdmd.modes,scales)
 
-get_data_for_dmd()
+#get_data_for_dmd()
+get_data_for_dmd_with_noice()
 
 #plot eigs
 #plotEigs(dmd.eigs)
