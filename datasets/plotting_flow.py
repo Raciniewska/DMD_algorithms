@@ -5,18 +5,23 @@ from matplotlib.ticker import FuncFormatter
 
 
 def plotErrorRDMD(df,rank):
+    plt.rcParams['font.size'] = '15'
     for labels, dfi in df.groupby("q_val"):
         plt.plot(dfi['p_val'],dfi['error_mean'], label=labels)
-    plt.legend(title='liczba iteracji potęgowych')
+    plt.legend(title='liczba iteracji potęgowych',bbox_to_anchor=(1.05, 1.0), loc='upper left')
     plt.title("Rząd docelowy - "+str(rank))
     plt.ylabel('Średni błąd')
     plt.xlabel('Parametr nadpróbkowania')
+    plt.yscale('log')
     plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
     plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
     plt.minorticks_on()
+    plt.tight_layout()
+    #plt.figure(figsize=(10, 10))
     plt.show()
 
 def plotErrorRDMDbyRank(df,p,q):
+    print(df)
     plt.plot(df['target_rank'],df['error_mean'])
     plt.title("Parametr nadpróbkowania - "+str(p) +" \n Liczba iteracji potęgowych - "+str(q))
     plt.ylabel('Średni błąd')
@@ -24,6 +29,7 @@ def plotErrorRDMDbyRank(df,p,q):
     plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
     plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
     plt.minorticks_on()
+    plt.tight_layout()
     plt.show()
 
 def plotTimeRDMDbyRank(df,dfDMD,p,q):
@@ -36,18 +42,20 @@ def plotTimeRDMDbyRank(df,dfDMD,p,q):
     plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
     plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
     plt.minorticks_on()
+    plt.tight_layout()
     plt.show()
 
 def plotTimeRDMD(df,rank):
     for labels, dfi in df.groupby("q_val"):
         plt.plot(dfi['p_val'], dfi['time_mean'], label=labels)
-    plt.legend(title='liczba iteracji potęgowych')
+    plt.legend(title='liczba iteracji potęgowych',bbox_to_anchor=(1.05, 1.0), loc='upper left')
     plt.title("Rząd docelowy - " + str(rank))
     plt.ylabel('Średni czas [s]')
     plt.xlabel('Parametr nadpróbkowania')
     plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
     plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
     plt.minorticks_on()
+    plt.tight_layout()
     plt.show()
 
 def ErrorRDMD(path):
@@ -141,7 +149,7 @@ def TimeRDMDforSelectedParams(path,p,q):
     dfDMD = dfDMD[['target_rank','time_mean']]
     plotTimeRDMDbyRank(df_to_plot,dfDMD,p,q)
 
-#ErrorRDMD('results_reconstruction/rdmd.csv')
-#ErrorRDMDforSelectedParams('results_reconstruction/rdmd.csv',10,2)
-#TimeRDMD('results_reconstruction/rdmd.csv')
-#TimeRDMDforSelectedParams('results_reconstruction/rdmd.csv',10,2)
+ErrorRDMD('results_reconstruction/rdmd.csv')
+#ErrorRDMDforSelectedParams('results_reconstruction/rdmd.csv',10,0)
+#TimeRDMD('results_reconstruction/rdmd_v1.csv')
+#TimeRDMDforSelectedParams('results_reconstruction/rdmd_v1.csv',10,0)

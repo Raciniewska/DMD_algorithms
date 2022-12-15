@@ -3,13 +3,13 @@ from datetime import datetime
 from rDMD.rDMDClass import rDMDClass
 from PIL import Image
 from matplotlib import pyplot as plt
-from Utils import _col_major_2darray, plot_mode_2D_flow, calculate_psnr
+from Utils import _col_major_2darray, plot_mode_2D_flow, calculate_psnr,calculate_mse
 import numpy as np
 import scipy.integrate
 import time
 import matplotlib.ticker as mtick
 import csv
-
+from functools import partial
 nx = 449
 ny = 199
 
@@ -66,8 +66,8 @@ def plotAverageDMDmode(modes, scales):
 
 def plotEigs(eigs1, eigs2):
     plt.rcParams['font.size'] = '13'
-    plt.plot(np.real(eigs1), np.imag(eigs1), 'rx', markersize=13, label="DMD")
-    plt.plot(np.real(eigs2), np.imag(eigs2), 'g.', markersize=13, label ="rDMD")
+    plt.plot(np.real(eigs1), np.imag(eigs1), 'r.', markersize=13, label="DMD z szumem")
+    plt.plot(np.real(eigs2), np.imag(eigs2), 'gx', markersize=13, label ="rDMD z szumem")
     plt.xlabel("część rzeczywista")
     plt.ylabel("część urojona")
     theta = np.linspace(0, 2 * np.pi, 1024)
@@ -77,9 +77,11 @@ def plotEigs(eigs1, eigs2):
     plt.minorticks_on()
     plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
     plt.tight_layout()
+
     plt.show()
 
 def plotIntegral():
+    plt.rcParams['font.size'] = '13'
     compute_integral = scipy.integrate.trapz
     dmd_states = [state.reshape((ny,nx)) for state in dmd.reconstructed_data.T]
     dmd_int = [compute_integral(compute_integral(state)).real for state in dmd_states]
@@ -87,26 +89,55 @@ def plotIntegral():
     original_int = [compute_integral(compute_integral(snapshot)).real for snapshot in (reshaping(x) for x in X.T)]
     rdmd_int = [compute_integral(compute_integral(state)).real for state in rdmd_states]
     figure = plt.figure(figsize=(18, 5))
-    plt.plot(rdmd.original_timesteps, original_int, 'g.', label='migawki czasowe macierzy danych')
-    plt.plot(rdmd.dmd_timesteps, rdmd_int, 'r+', label='wektory własne uzyskane przez rDMD')
-    plt.plot(dmd.dmd_timesteps, dmd_int, 'b+', label='wektory własne uzyskane przez DMD')
+    plt.plot(rdmd.original_timesteps, original_int, 'g.', label='migawki czasowe macierzy danych bez szumu')
+    plt.plot(rdmd.dmd_timesteps, rdmd_int, 'r+', label='rekostrukcja uzyskana przez rDMD bez szumu')
+    plt.plot(dmd.dmd_timesteps, dmd_int, 'b+', label='rekostrukcja uzyskana przez DMD bez szumu')
     plt.ylabel('Całka')
     plt.xlabel('Czas')
     plt.grid()
+    plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
+    plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
+    plt.minorticks_on()
     leg = plt.legend()
+    plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
+    plt.tight_layout()
     plt.show()
 
 def plotPSNR():
     # plot and calculate PSNR
-    data = [x for x in (reshaping(snap) for snap in X.T)]
+    data = [x for x in (snap.reshape((ny,nx)) for snap in X.T)]
     PSNR_metric_RDMD = []
     PSNR_metric_DMD = []
-    for id_subplot, snapshot in enumerate(dmd.reconstructed_data.T, start=1):
-        PSNR_metric_DMD.append(calculate_psnr(data[id_subplot - 1].real, snapshot.reshape((ny,nx)).real))
+    PSNR_metric_RDMD_noise = []
+    PSNR_metric_DMD_noise = []
+    f, ax = plt.subplots(1)
     for id_subplot, snapshot in enumerate(rdmd.reconstructed_data.T, start=1):
-        PSNR_metric_RDMD.append(calculate_psnr(data[id_subplot - 1].real, snapshot.reshape((ny,nx)).real))
-    plt.plot(np.linspace(1, 151, 151), np.subtract(PSNR_metric_DMD,PSNR_metric_RDMD), 'r')
-    leg = plt.legend()
+        print(id_subplot)
+        if id_subplot-1 <151:
+            PSNR_metric_RDMD.append(calculate_psnr(data[id_subplot-1].real, snapshot.reshape((ny,nx)).real))
+    for id_subplot, snapshot in enumerate(dmd.reconstructed_data.T, start=1):
+        if id_subplot-1 < 151:
+            PSNR_metric_DMD.append(calculate_psnr(data[id_subplot-1].real, snapshot.reshape((ny,nx)).real))
+    for id_subplot, snapshot in enumerate(dmd_noise.reconstructed_data.T, start=1):
+        if id_subplot-1 < 151:
+            PSNR_metric_DMD_noise.append(calculate_psnr(data[id_subplot-1].real, snapshot.reshape((ny,nx)).real))
+    for id_subplot, snapshot in enumerate(rdmd_noise.reconstructed_data.T, start=1):
+        print(id_subplot)
+        if id_subplot-1 < 151:
+            PSNR_metric_RDMD_noise.append(calculate_psnr(data[id_subplot-1].real, snapshot.reshape((ny,nx)).real))
+
+
+    plt.plot(np.linspace(1, 151, 151), PSNR_metric_DMD, 'k', label="DMD bez szumu")
+    plt.plot(np.linspace(1, 151, 151), PSNR_metric_RDMD, 'g', label="rDMD bez szumu")
+    plt.plot(np.linspace(1, 151, 151), PSNR_metric_DMD_noise, 'r',label="DMD z szumem")
+    plt.plot(np.linspace(1, 151, 151), PSNR_metric_RDMD_noise, 'b', label="rDMD z szumem")
+    plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
+    plt.title("Rząd docelowy = 20 \n Parametr nadprókowania = 10 \n Liczba iteracji potęgowych = 0 ")
+    ax.set_ylim(bottom=0)
+    plt.grid(b=True, which='major', color='#CCCCCC', linestyle='-')
+    plt.grid(b=True, which='minor', color='#CCCCCC', linestyle='-', alpha=0.2)
+    plt.minorticks_on()
+    plt.tight_layout()
     plt.show()
 
 def showAverageExecutionTime(repetitions):
@@ -177,10 +208,10 @@ def get_data_for_dmd():
     dmdCSV.close()
     rdmdCSV.close()
 
-def get_data_for_dmd_with_noice():
-    target_rank = [10, 20, 30, 40]
-    q = [0, 1, 2, 3]
-    p = [0, 2, 5, 8, 10]
+def get_data_for_dmd_with_noise():
+    target_rank =[20]# [10, 20, 30, 40]
+    q = [0]#, 1, 2, 3]
+    p =[10]# [0, 2, 5, 8, 10]
     iterations = 10
     dmdCSV = open('results_reconstruction_noice/dmd.csv', 'w')
     rdmdCSV = open('results_reconstruction_noice/rdmd.csv', 'w')
@@ -198,7 +229,7 @@ def get_data_for_dmd_with_noice():
         for i in range(iterations):
             start = datetime.now()
             dmd = DMD(svd_rank=r, tlsq_rank=0, exact=True, opt=True)
-            dmd.fit(X)
+            dmd.fit(X_noise)
             end = datetime.now()
             time_spent = end - start
             time_spent_row.append(time_spent)
@@ -213,7 +244,7 @@ def get_data_for_dmd_with_noice():
                 for i in range(iterations):
                     rdmd = rDMDClass(svd_rank=r, tlsq_rank=0, exact=True, opt=False)
                     start = datetime.now()
-                    rdmd.fit(X_noice, oversample=p_val, n_subspace=q_val, random_state=None)
+                    rdmd.fit(X_noise, oversample=p_val, n_subspace=q_val, random_state=None)
                     end = datetime.now()
                     time_spent = end - start
                     time_spent_row.append(time_spent)
@@ -226,22 +257,40 @@ def get_data_for_dmd_with_noice():
     rdmdCSV.close()
 
 X = np.genfromtxt('../../data/vorticity.csv', delimiter=',', dtype=None)
-X_noice = X
+
+target_snr_db= 10
+x_watts =  X **2
+x_db = 10 * np.log10(x_watts)
+sig_avg_watts = np.mean(x_watts)
+sig_avg_db = 10 * np.log10(sig_avg_watts)
+noise_avg_db = sig_avg_db - target_snr_db
+noise_avg_watts = 10 ** (noise_avg_db / 10)
+sig_avg = np.mean(X)
+mean_noise = 0
+print(np.sqrt(noise_avg_watts))
+noise =np.random.normal(mean_noise, 5, X.shape)
+X_noise = X + noise
 print(len(X))
 print(len(X[0]))
 #plotSnapshot(X[:,150].copy())
 #plotSVD(X)
 
 #wyliczenie DMD modes czyli POD
-dmd = DMD(svd_rank=10, tlsq_rank=0, exact=True, opt=True)
+dmd = DMD(svd_rank=20, tlsq_rank=0, exact=True, opt=True)
 dmd.fit(X)
 #plotDMDMode(dmd.modes[:,1])
 #plot_mode_2D_flow(x=np.arange(nx), y=np.arange(ny), filename="dmd.jpg",
 #                  figsize=(20,8), modes=dmd.modes,index_mode =None)
 
 
-rdmd = rDMDClass(svd_rank=10, tlsq_rank=0, exact=True, opt=False)
-rdmd.fit(X, oversample = 10,n_subspace=2, random_state =None)
+rdmd = rDMDClass(svd_rank=20, tlsq_rank=0, exact=True, opt=False)
+rdmd.fit(X, oversample = 10,n_subspace=0, random_state =None)
+
+dmd_noise = DMD(svd_rank=20, tlsq_rank=0, exact=True, opt=True)
+dmd_noise.fit(X_noise)
+
+rdmd_noise = rDMDClass(svd_rank=20, tlsq_rank=0, exact=True, opt=False)
+rdmd_noise.fit(X_noise, oversample = 10,n_subspace=0, random_state =None)
 # plot_mode_2D_flow(x=np.arange(nx), y=np.arange(ny), filename="dmd.jpg",
 #                   figsize=(20,8), modes=rdmd.modes,index_mode =None)
 
@@ -252,17 +301,17 @@ rdmd.fit(X, oversample = 10,n_subspace=2, random_state =None)
 # plotAverageDMDmode(rdmd.modes,scales)
 
 #get_data_for_dmd()
-get_data_for_dmd_with_noice()
+#get_data_for_dmd_with_noise()
 
 #plot eigs
 #plotEigs(dmd.eigs)
-#plotEigs(dmd.eigs,rdmd.eigs)
+#plotEigs(dmd_noise.eigs,rdmd_noise.eigs)
 
 #reconstructed data integral
 #plotIntegral()
 
 #reconstructed data MSE by PSNR
-#plotPSNR()
+plotPSNR()
 
 # #compare time spent on task
 # repetitions =5

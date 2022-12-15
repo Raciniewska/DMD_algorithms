@@ -4,6 +4,7 @@ from past.utils import old_div
 from scipy import linalg
 from os.path import splitext
 import math
+from sklearn.metrics import mean_squared_error
 
 def normalize0to255(img):
     image = img * (255.0/img.max())
@@ -17,6 +18,15 @@ def calculate_psnr(img1, img2):
     if mse == 0:
         return float('inf')
     return 20 * math.log10(255.0 / math.sqrt(mse))
+
+def calculate_mse(img1, img2):
+    # img1 and img2 have range [0, 255]
+    #img1=normalize0to255(img1)
+    #img2=normalize0to255(img2)
+    mse = mean_squared_error(img1,img2)#np.mean((img1 - img2)**2)
+    if mse == 0:
+        return float('inf')
+    return mse #-10 * math.log10(mse/(255.0*255.0) )
 
 def _col_major_2darray(X):
     """
