@@ -179,8 +179,8 @@ def get_data_for_dmd():
         row_dmd = [r]
         time_spent_row = []
         for i in range(iterations):
-            start = datetime.now()
             dmd = DMD(svd_rank=r, tlsq_rank=0, exact=True, opt=True)
+            start = datetime.now()
             dmd.fit(X)
             end = datetime.now()
             time_spent = end - start
@@ -227,8 +227,8 @@ def get_data_for_dmd_with_noise():
         row_dmd = [r]
         time_spent_row = []
         for i in range(iterations):
-            start = datetime.now()
             dmd = DMD(svd_rank=r, tlsq_rank=0, exact=True, opt=True)
+            start = datetime.now()
             dmd.fit(X_noise)
             end = datetime.now()
             time_spent = end - start
