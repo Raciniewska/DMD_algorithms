@@ -185,6 +185,7 @@ def firstTest():
     plt.show()
 
 def showPowerIterations():
+    plt.rcParams['font.size'] = '15'
     fig, ax = plt.subplots(1, 1)
     fig.set_size_inches(15, 5)
 
@@ -205,11 +206,12 @@ def showPowerIterations():
         ax.scatter(x, S_new, color=color)
         ax.plot(x, S_new, label=r'$q = %s$' % q, color=color, marker=marker)
 
-    ax.set_ylabel('Normalized magnitude')
-    ax.set_xlabel(r'Singular values $\sigma_i$')
-    ax.set_title('Normalized singular values per $q$ power iterations')
+    ax.set_ylabel('Znormalizowana wartośc własna')
+    ax.set_xlabel(r'Numer wartości własnej $\sigma_i$')
+    ax.set_title('Znormalizowane wartości własne po zastosowaniu $q$ iteracji potęgowych')
     plt.legend()
     plt.tight_layout()
     plt.show()
 
-getErrorDataWithVariance()
+#getErrorDataWithVariance()
+showPowerIterations()

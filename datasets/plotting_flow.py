@@ -150,6 +150,6 @@ def TimeRDMDforSelectedParams(path,p,q):
     plotTimeRDMDbyRank(df_to_plot,dfDMD,p,q)
 
 ErrorRDMD('results_reconstruction/rdmd.csv')
-#ErrorRDMDforSelectedParams('results_reconstruction/rdmd.csv',10,0)
+#ErrorRDMDforSelectedParams('results_reconstruction/rdmdv1.csv',10,0)
 #TimeRDMD('results_reconstruction/rdmd_v1.csv')
 #TimeRDMDforSelectedParams('results_reconstruction/rdmd_v1.csv',10,0)
